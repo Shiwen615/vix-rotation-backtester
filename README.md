@@ -1,6 +1,11 @@
 # VIX Rotation Backtester
 
-![Demo](demo.gif)
+<table>
+  <tr>
+    <td width="50%"><img src="demo.png" alt="Demo screenshot" width="100%"></td>
+    <td width="50%"><img src="heatmap.png" alt="Demo animation" width="100%"></td>
+  </tr>
+</table>
 
 **Stop guessing VIX thresholds. Let the data find them.**
 

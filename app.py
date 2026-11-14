@@ -10,7 +10,7 @@ import streamlit as st
 from utilities.charts import equity_figure, heatmap_figure
 from utilities.domain import SIGNAL_PRESETS, ParameterSet, Universe
 from utilities.engine import run_backtest
-from utilities.market_data import MarketData, fetch_market_data
+from utilities.market_data import MarketData, fetch_market_data, is_taiwan
 from utilities.metrics import compute_metrics
 from utilities.optimizer import ParameterGrid, Range, optimize
 from utilities.strategies import BuyAndHold, VixRotation
@@ -57,8 +57,8 @@ def round_pct(df: pd.DataFrame) -> pd.DataFrame:
 # ---------- Sidebar inputs ----------
 st.sidebar.header('Assets')
 universe = Universe(
-    defensive=st.sidebar.text_input('Defensive asset', 'QQQ').strip().upper(),
-    growth=st.sidebar.text_input('Growth asset', 'TQQQ').strip().upper(),
+    defensive=st.sidebar.text_input('Defensive asset', 'QQQ', help='US ticker (QQQ) or Taiwan code without suffix (0050).').strip().upper(),
+    growth=st.sidebar.text_input('Growth asset', 'TQQQ', help='US ticker (QQQ) or Taiwan code without suffix (0050).').strip().upper(),
     signal='',
 )
 preset = SIGNAL_PRESETS[st.sidebar.selectbox('Signal', list(SIGNAL_PRESETS),
@@ -68,6 +68,8 @@ if preset.label == 'Custom':
     signal_expr = st.sidebar.text_input('Signal ticker or ratio A/B', preset.expression)
 st.sidebar.caption(f'`{signal_expr.strip().upper()}` · {preset.help}')
 universe = Universe(universe.defensive, universe.growth, signal_expr.strip().upper())
+if is_taiwan(universe.defensive) != is_taiwan(universe.growth):
+    st.sidebar.caption('⚠️ Assets span Taiwan and US markets; returns are not currency-converted.')
 st.sidebar.header('Period & cost')
 TODAY = dt.date.today()
 # Explicit bounds: Streamlit otherwise limits picks to ±10 years of the default.

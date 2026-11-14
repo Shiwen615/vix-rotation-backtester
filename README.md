@@ -1,5 +1,7 @@
 # VIX Rotation Backtester
 
+![Demo](demo.gif)
+
 Enter a parameter range in the web UI and automatically find the best BUY / SELL thresholds and minimum holding period (in months) for a VIX-based asset rotation strategy. All results are shown on the page only; no files are written. Term definitions are in [GLOSSARY.md](GLOSSARY.md) (in Chinese).
 
 中文版說明請見 [README.zh-TW.md](README.zh-TW.md)。
@@ -7,9 +9,20 @@ Enter a parameter range in the web UI and automatically find the best BUY / SELL
 ## Run
 
 ```bash
-pip install -U numpy pandas plotly streamlit yfinance
+pip install -U numpy pandas plotly streamlit yfinance requests
 streamlit run app.py
 ```
+
+## Markets
+
+Both US and Taiwan (TWSE-listed and TPEx/OTC) securities are supported, and can be mixed:
+
+- A ticker that starts with a **digit** is Taiwanese: type just the code, without `.TW` / `.TWO` (e.g. `0050`, `0052`, `00631L`, `2330`, `6488`). Its prices come from the free [FinMind](https://finmindtrade.com/) API.
+- Any other ticker (e.g. `QQQ`, `^VIX`) is US / Yahoo Finance.
+- The rule applies to the Signal too, e.g. `0050/0052`.
+- The default Signal is still US ^VIX. Its day-*t* close (early morning Taipei time on *t+1*) is known before the Taiwan *t+1* open, so there is no look-ahead.
+- When the two assets come from different markets, only days both traded are used, and returns are **not** currency-converted (the sidebar shows a reminder).
+- FinMind's free tier is rate-limited; set the `FINMIND_TOKEN` environment variable to use your own token if needed.
 
 ## Trading rules
 
@@ -20,7 +33,7 @@ streamlit run app.py
 5. Every new purchase of the Growth Asset restarts the holding-month count.
 6. Commission is charged on each side: once when the first position is opened, and twice for each asset swap.
 7. The Benchmark buys the Defensive Asset at the open on the second day after the observation day and holds it to the end, starting on the same day as the Rotation.
-8. Prices use yfinance's `auto_adjust=True` adjusted prices, which only approximate total return with dividends reinvested.
+8. US prices use yfinance's `auto_adjust=True` adjusted prices. Taiwan prices are FinMind raw prices back-adjusted by this app for every ex-dividend and split event (scaling earlier prices by after ÷ before reference price). Both only approximate total return with dividends reinvested. Days a source reports a zero price are treated as missing.
 
 ## Page
 
@@ -34,7 +47,7 @@ streamlit run app.py
 ```
 utilities/
   domain.py        Position, Universe, ParameterSet, Trade
-  market_data.py   MarketData (numpy arrays) and yfinance downloads
+  market_data.py   MarketData (numpy arrays); yfinance (US) and FinMind (Taiwan) downloads
   strategies.py    Strategy interface, VixRotation, BuyAndHold
   engine.py        Day-by-day simulation, outputs a return index
   metrics.py       Total return, CAGR, max drawdown, volatility

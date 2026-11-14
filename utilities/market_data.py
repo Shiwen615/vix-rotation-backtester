@@ -53,15 +53,21 @@ class MarketData:
 
 
 def fetch_market_data(universe: Universe, start: str, end: str) -> MarketData:
-    """Download adjusted OHLC from Yahoo Finance. Nothing is written to disk."""
+    """Download adjusted prices: Taiwan codes from FinMind, others from Yahoo
+    Finance. Nothing is written to disk."""
     import yfinance as yf
 
     def history(ticker: str) -> pd.DataFrame:
-        hist = yf.Ticker(ticker).history(start=start, end=end, interval='1d',
-                                         auto_adjust=True, actions=False)
-        if hist is None or hist.empty:
-            raise RuntimeError(f'No historical prices for {ticker}.')
+        if is_taiwan(ticker):
+            hist = taiwan_history(ticker, start, end)
+        else:
+            hist = yf.Ticker(ticker).history(start=start, end=end, interval='1d',
+                                             auto_adjust=True, actions=False)
+            if hist is None or hist.empty:
+                raise RuntimeError(f'No historical prices for {ticker}.')
         hist.index = pd.to_datetime(hist.index).tz_localize(None).normalize()
+        # Sources report some missing prices as 0; treat those days as missing.
+        hist = hist[(hist[['Open', 'Close']] > 0).all(axis=1)]
         return hist.loc[~hist.index.duplicated(keep='last')].sort_index()
 
     defensive = history(universe.defensive)[['Open', 'Close']].rename(
@@ -74,6 +80,55 @@ def fetch_market_data(universe: Universe, start: str, end: str) -> MarketData:
     df = defensive.join(growth, how='inner')
     df = df.join(signal.reindex(df.index, method='ffill')).dropna()
     return MarketData.from_frame(df)
+
+
+def is_taiwan(ticker: str) -> bool:
+    """Taiwan codes start with a digit (0050, 00631L, 2330); US ones don't."""
+    return ticker[:1].isdigit()
+
+
+_FINMIND_URL = 'https://api.finmindtrade.com/api/v4/data'
+
+
+def _finmind(dataset: str, ticker: str, start: str, end: str | None = None) -> pd.DataFrame:
+    import os
+    import requests
+
+    params = {'dataset': dataset, 'data_id': ticker, 'start_date': start}
+    if end:
+        params['end_date'] = end
+    headers = {}
+    if token := os.environ.get('FINMIND_TOKEN'):
+        headers['Authorization'] = f'Bearer {token}'
+    resp = requests.get(_FINMIND_URL, params=params, headers=headers, timeout=60)
+    body = resp.json()
+    if resp.status_code != 200:
+        raise RuntimeError(f'FinMind {dataset} for {ticker}: {body.get("msg")}')
+    return pd.DataFrame(body.get('data', []))
+
+
+def taiwan_history(ticker: str, start: str, end: str) -> pd.DataFrame:
+    """Listed or OTC Taiwan prices from FinMind, back-adjusted for dividends and splits.
+
+    Each ex-dividend / split event scales all earlier prices by
+    after_price / before_price, approximating total return with reinvestment.
+    """
+    raw = _finmind('TaiwanStockPrice', ticker, start, end)
+    if raw.empty:
+        raise RuntimeError(f'No historical prices for {ticker}.')
+    hist = raw.rename(columns={'open': 'Open', 'close': 'Close'})
+    hist.index = pd.to_datetime(hist['date'])
+    hist = hist[['Open', 'Close']].astype(float)
+
+    # Events after `end` don't matter; earlier ones only matter after `start`.
+    events = pd.concat([_finmind(ds, ticker, start)
+                        for ds in ('TaiwanStockDividendResult', 'TaiwanStockSplitPrice')])
+    if not events.empty:
+        for _, ev in events.iterrows():
+            before, after = float(ev['before_price']), float(ev['after_price'])
+            if before > 0 and after > 0:
+                hist.loc[hist.index < pd.Timestamp(ev['date'])] *= after / before
+    return hist
 
 
 def parse_signal(expression: str) -> list[str]:

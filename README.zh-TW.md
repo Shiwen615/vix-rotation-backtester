@@ -1,5 +1,7 @@
 # VIX Rotation Backtester
 
+![Demo](demo.gif)
+
 English version: [README.md](README.md)
 
 在網頁上輸入參數範圍，自動找出 VIX 輪動策略的最佳 BUY / SELL / 最短持有月數。所有結果只顯示在頁面上，不輸出任何檔案。用語定義見 [GLOSSARY.md](GLOSSARY.md)。
@@ -7,9 +9,20 @@ English version: [README.md](README.md)
 ## 執行
 
 ```bash
-pip install -U numpy pandas plotly streamlit yfinance
+pip install -U numpy pandas plotly streamlit yfinance requests
 streamlit run app.py
 ```
+
+## 市場
+
+支援美股和台股（上市、上櫃），兩者也可以混搭：
+
+- 代號以**數字**開頭就是台股，只要輸入代號、不用加 `.TW` / `.TWO`（例如 `0050`、`0052`、`00631L`、`2330`、`6488`）。價格來自免費的 [FinMind](https://finmindtrade.com/) API。
+- 其他代號（例如 `QQQ`、`^VIX`）是美股，來自 Yahoo Finance。
+- Signal 欄位也適用同樣規則，例如 `0050/0052`。
+- 預設 Signal 仍是美國 ^VIX。美股 *t* 日收盤在台北時間 *t+1* 清晨，早於台股 *t+1* 開盤，因此沒有前視偏差。
+- 兩檔資產分屬不同市場時，只取兩邊都有交易的日子，報酬**未做匯率換算**（側欄會顯示提示）。
+- FinMind 免費版有呼叫次數上限；需要時可設定環境變數 `FINMIND_TOKEN` 使用自己的 token。
 
 ## 交易規則
 
@@ -20,7 +33,7 @@ streamlit run app.py
 5. 每次重新買進 Growth Asset，持有月數都重新計算。
 6. 手續費每一邊各扣一次：建立第一筆部位扣一次，資產互換扣兩次。
 7. Benchmark 在觀察日後的第二天開盤買進 Defensive Asset 並持有到結束，和 Rotation 同一天起跑。
-8. 價格使用 yfinance 的 `auto_adjust=True` 調整價，只是含配息再投入的近似值。
+8. 美股價格使用 yfinance 的 `auto_adjust=True` 調整價；台股價格是 FinMind 原始價，由本程式依每次除權息與分割事件往前還原（以前價格乘上 除權息後 ÷ 前 參考價）。兩者都只是含配息再投入的近似值。資料來源回報為 0 的價格視為缺值。
 
 ## 頁面
 
@@ -34,7 +47,7 @@ streamlit run app.py
 ```
 utilities/
   domain.py        Position、Universe、ParameterSet、Trade
-  market_data.py   MarketData（numpy 陣列）與 yfinance 下載
+  market_data.py   MarketData（numpy 陣列）、yfinance（美股）與 FinMind（台股）下載
   strategies.py    Strategy 介面、VixRotation、BuyAndHold
   engine.py        逐日模擬，輸出報酬指數
   metrics.py       總報酬、CAGR、最大回撤、波動度

@@ -13,7 +13,8 @@ SELL_COLOR = '#CF6710'
 
 
 def equity_figure(strategy: BacktestResult, benchmark: BacktestResult,
-                  universe: Universe, params: ParameterSet) -> go.Figure:
+                  universe: Universe, params: ParameterSet,
+                  growth_benchmark: BacktestResult | None = None) -> go.Figure:
     """Return curves on top, signal with thresholds below; shared x-axis."""
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05,
                         row_heights=[0.68, 0.32])
@@ -22,6 +23,10 @@ def equity_figure(strategy: BacktestResult, benchmark: BacktestResult,
                     line=dict(width=2.5), row=1, col=1)
     fig.add_scatter(x=benchmark.dates, y=pct(benchmark), name=f'Buy & hold {universe.defensive}',
                     line=dict(width=2, color='gray'), row=1, col=1)
+    if growth_benchmark is not None:
+        fig.add_scatter(x=growth_benchmark.dates, y=pct(growth_benchmark),
+                        name=f'Buy & hold {universe.growth}',
+                        line=dict(width=2, color='#C2410C', dash='dash'), row=1, col=1)
     _add_trade_markers(fig, strategy, universe)
 
     fig.add_scatter(x=strategy.dates, y=strategy.signal, name=universe.signal,

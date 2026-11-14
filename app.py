@@ -13,7 +13,7 @@ from utilities.engine import run_backtest
 from utilities.market_data import MarketData, fetch_market_data, is_taiwan
 from utilities.metrics import compute_metrics
 from utilities.optimizer import ParameterGrid, Range, optimize
-from utilities.strategies import BuyAndHold, VixRotation
+from utilities.strategies import BuyAndHold, BuyAndHoldGrowth, VixRotation
 
 TOP_N = 10
 PCT_DECIMALS = 1
@@ -181,7 +181,9 @@ c[0].metric('Total return', f'{s_m.total_return_pct:.1f}%',
 c[1].metric('CAGR', f'{s_m.cagr_pct:.1f}%', f'{s_m.cagr_pct - b_m.cagr_pct:+.1f} pp')
 c[2].metric('Max drawdown', f'{s_m.max_drawdown_pct:.1f}%')
 c[3].metric('Trades', s_m.trade_count)
-st.plotly_chart(equity_figure(strategy, benchmark, universe, params), width='stretch')
+growth_benchmark = run_backtest(market, BuyAndHoldGrowth(), fee)
+st.plotly_chart(equity_figure(strategy, benchmark, universe, params, growth_benchmark),
+                width='stretch')
 st.dataframe(round_pct(pd.DataFrame([asdict(m) for m in (s_m, b_m)],
                           index=['Rotation', f'Buy & hold {universe.defensive}'])),
              width='stretch')

@@ -2,7 +2,16 @@
 
 ![Demo](demo.gif)
 
-Enter a parameter range in the web UI and automatically find the best BUY / SELL thresholds and minimum holding period (in months) for a VIX-based asset rotation strategy. All results are shown on the page only; no files are written. Term definitions are in [GLOSSARY.md](GLOSSARY.md) (in Chinese).
+**Stop guessing VIX thresholds. Let the data find them.**
+
+VIX Rotation Backtester sweeps thousands of BUY / SELL / holding-period combinations for a VIX-driven switch between a growth asset (e.g. QQQ or 0050) and a defensive asset. It ranks every combination by return, then checks the winners out-of-sample so you can see which ones hold up.
+
+- **Grid search** over BUY and SELL thresholds and minimum holding months, with results in a web UI
+- **Heatmap** of excess return over a buy-and-hold benchmark, so you can see the whole parameter landscape at once
+- **US and Taiwan markets** in one tool, mixable (e.g. `0050/0052` as the signal, `QQQ` as the asset)
+- **Out-of-sample validation** to flag strategies that only looked good on past data
+
+Nothing is written to disk; all results appear on the page. Term definitions are in [GLOSSARY.md](GLOSSARY.md) (in Chinese).
 
 中文版說明請見 [README.zh-TW.md](README.zh-TW.md)。
 

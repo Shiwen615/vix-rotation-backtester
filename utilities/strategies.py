@@ -30,6 +30,11 @@ class BuyAndHold(Strategy):
         return Position.DEFENSIVE
 
 
+class BuyAndHoldGrowth(Strategy):
+    def decide(self, signal_idx, position, growth_entry_idx):
+        return Position.GROWTH
+
+
 class VixRotation(Strategy):
     """CASH -> GROWTH if signal > buy, otherwise DEFENSIVE.
     DEFENSIVE -> GROWTH when signal > buy; GROWTH -> DEFENSIVE when
